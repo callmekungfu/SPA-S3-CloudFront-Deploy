@@ -1,0 +1,114 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "Automatically Deploy a stack suitable for static website and SPA hosting with CloudFront + Gzipping",
+    "Parameters": {
+        "BucketName": {
+            "Type": "String",
+            "Description": "The name for the bucket where the application will be served from"
+        }
+    },
+    "Resources": {
+        "S3": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+                "AccessControl": "PublicRead",
+                "BucketName": {
+                    "Ref": "BucketName"
+                },
+                "WebsiteConfiguration": {
+                    "IndexDocument": "index.html",
+                    "ErrorDocument": "index.html"
+                }
+            }
+        },
+        "S3BucketPolicy": {
+            "Type": "AWS::S3::BucketPolicy",
+            "Properties": {
+                "Bucket": {
+                    "Ref": "BucketName"
+                },
+                "PolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "s3:GetObject"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": "*",
+                            "Resource": {
+                                "Fn::Sub": "arn:aws:s3:::${BucketName}/*"
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "CloudFrontOriginPolicy": {
+            "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+            "Properties": {
+                "CloudFrontOriginAccessIdentityConfig": {
+                    "Comment": {
+                    "Fn::Sub": "CloudFront Origin Policy for ${BucketName}"
+                }
+                }
+            }
+        },
+        "CloudFrontDist": {
+            "Type": "AWS::CloudFront::Distribution",
+            "Properties": {
+                "DistributionConfig": {
+                    "Comment": {
+                        "Fn::Sub": "CloudFront Distribution for ${BucketName}"
+                    },
+                    "CustomErrorResponses": [
+                        {
+                            "ResponseCode": 200,
+                            "ErrorCode": 403,
+                            "ResponsePagePath": "/index.html"
+                        },
+                        {
+                            "ErrorCode": 404,
+                            "ResponseCode": 200,
+                            "ResponsePagePath": "/index.html"
+                        }
+                    ],
+                    "DefaultRootObject": "index.html",
+                    "Enabled": true,
+                    "HttpVersion": "http2",
+                    "ViewerCertificate": { "CloudFrontDefaultCertificate": true },
+                    "Origins": [
+                        {
+                            "Id": {
+                                "Fn::Sub": "S3-${BucketName}"
+                            },
+                            "DomainName": {
+                                "Fn::Sub": "${BucketName}.s3.${AWS::Region}.amazonaws.com"
+                            },
+                            "S3OriginConfig": {
+                                "OriginAccessIdentity": {
+                                    "Fn::Sub": "origin-access-identity/cloudfront/${CloudFrontOriginPolicy}"
+                                }
+                            }
+                        }
+                    ],
+                    "DefaultCacheBehavior": {
+                        "Compress": true,
+                        "AllowedMethods": [
+                            "GET",
+                            "HEAD"
+                        ],
+                        "CachedMethods": [
+                            "GET",
+                            "HEAD"
+                        ],
+                        "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+                        "TargetOriginId": {
+                            "Fn::Sub": "S3-${BucketName}"
+                        },
+                        "ViewerProtocolPolicy": "redirect-to-https"
+                    }
+                }
+            }
+        }
+    }
+}
