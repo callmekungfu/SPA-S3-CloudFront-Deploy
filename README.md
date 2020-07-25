@@ -1,4 +1,4 @@
-# Single Page Application Deployment with AWS S3 and CloudFront 🚀
+# SPA Deployment with AWS S3 and CloudFront 🚀
 
 This repo contains python scripts and CloudFormation templates that allows you to quickly set up and manage a static website or SPA stack. 
 
